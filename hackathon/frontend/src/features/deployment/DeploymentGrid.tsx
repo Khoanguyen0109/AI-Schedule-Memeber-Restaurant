@@ -13,14 +13,8 @@ import Button from "@mui/material/Button";
 import Tooltip from "@mui/material/Tooltip";
 import { useAppDispatch } from "../../app/hooks";
 import { assignEmployee, unassignEmployee } from "./deploymentSlice";
+import { SHIFTS, SHIFT_LABELS } from "./shiftConstants";
 import type { AssignedCell, StaffingCell, Employee, Shift } from "../../services/types";
-
-const SHIFTS: Shift[] = ["Morning", "Afternoon", "Evening"];
-const SHIFT_LABELS: Record<Shift, string> = {
-  Morning: "Morning (6\u201312)",
-  Afternoon: "Afternoon (12\u201318)",
-  Evening: "Evening (18\u201323)",
-};
 
 function rushForShift(staffingCells: StaffingCell[], shift: Shift) {
   const sample = staffingCells.find((c) => c.shift === shift && c.rush_hour?.is_rush);
