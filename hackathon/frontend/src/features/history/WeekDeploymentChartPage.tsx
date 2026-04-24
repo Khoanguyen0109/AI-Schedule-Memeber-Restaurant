@@ -21,18 +21,18 @@ function addDays(anchor: Date, delta: number): Date {
   return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + delta);
 }
 
-/** Consecutive cells with the same `station_id` become one group (order preserved). */
-function groupConsecutiveByStation(cells: AssignedCell[]): AssignedCell[][] {
-  const groups: AssignedCell[][] = [];
+/** One group per `station_id` (first-seen station order); merges all cells for that station in the shift. */
+function groupCellsByStation(cells: AssignedCell[]): AssignedCell[][] {
+  const byId = new Map<string, AssignedCell[]>();
+  const order: string[] = [];
   for (const cell of cells) {
-    const last = groups[groups.length - 1];
-    if (last?.[0]?.station_id === cell.station_id) {
-      last.push(cell);
-    } else {
-      groups.push([cell]);
+    if (!byId.has(cell.station_id)) {
+      order.push(cell.station_id);
+      byId.set(cell.station_id, []);
     }
+    byId.get(cell.station_id)!.push(cell);
   }
-  return groups;
+  return order.map((id) => byId.get(id)!);
 }
 
 function employeeDisplayName(id: string, employeeNameById: Map<string, string>): string {
@@ -128,8 +128,8 @@ export default function WeekDeploymentChartPage() {
           matrix[shift].push({ kind: "groups", groups: [] });
           continue;
         }
-        const consecutiveGroups = groupConsecutiveByStation(forShift);
-        const groups = consecutiveGroups.map((grp) => {
+        const stationGroups = groupCellsByStation(forShift);
+        const groups = stationGroups.map((grp) => {
           const sid = grp[0].station_id;
           const stationName = stationNameById.get(sid) ?? formatStationFallback(sid);
           const ids = grp.flatMap((c) => c.assigned_employee_ids);
