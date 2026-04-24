@@ -28,9 +28,14 @@ export default function HistoryPage() {
       </Box>
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Button variant="contained" size="small" onClick={() => navigate("/")}>
-          + New chart
-        </Button>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button variant="outlined" size="small" onClick={() => navigate("/history/week")}>
+            Week overview
+          </Button>
+          <Button variant="contained" size="small" onClick={() => navigate("/")}>
+            + New chart
+          </Button>
+        </Box>
       </Box>
 
       <Card sx={{ mb: 2 }}>

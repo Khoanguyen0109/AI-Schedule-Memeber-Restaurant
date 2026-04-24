@@ -11,6 +11,7 @@ import CrewPage from "./features/crew/CrewPage";
 import SuggestionPage from "./features/suggestion/SuggestionPage";
 import DeploymentPage from "./features/deployment/DeploymentPage";
 import HistoryPage from "./features/history/HistoryPage";
+import WeekDeploymentChartPage from "./features/history/WeekDeploymentChartPage";
 import DeploymentDetailPage from "./features/history/DeploymentDetailPage";
 import SummaryPage from "./features/summary/SummaryPage";
 
@@ -28,6 +29,7 @@ function ThemedApp() {
             <Route path="/deploy" element={<DeploymentPage />} />
             <Route path="/summary" element={<SummaryPage />} />
             <Route path="/history" element={<HistoryPage />} />
+            <Route path="/history/week" element={<WeekDeploymentChartPage />} />
             <Route path="/history/:id" element={<DeploymentDetailPage />} />
             <Route path="/store-profile" element={<StoreProfilePage />} />
             <Route path="/crew" element={<CrewPage />} />

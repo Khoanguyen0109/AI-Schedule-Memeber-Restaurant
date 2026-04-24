@@ -46,6 +46,7 @@ const STEP_NAV: Record<string, StepNav> = {
   "/": { nextPath: "/deploy", nextLabel: "Next: Assign crew" },
   "/deploy": { backPath: "/", nextPath: "/history", nextLabel: "Save deployment chart", nextVariant: "success" },
   "/history": { backPath: "/deploy" },
+  "/history/week": { backPath: "/history" },
   "/store-profile": { nextPath: "/crew", nextLabel: "Next: Crew setup" },
   "/crew": { backPath: "/store-profile", nextPath: "/", nextLabel: "Next: AI suggestion" },
 };
