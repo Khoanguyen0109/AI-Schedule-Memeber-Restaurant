@@ -1,7 +1,6 @@
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -13,8 +12,10 @@ import Button from "@mui/material/Button";
 import Tooltip from "@mui/material/Tooltip";
 import { useAppDispatch } from "../../app/hooks";
 import { assignEmployee, unassignEmployee } from "./deploymentSlice";
+import AssignPopover from "./AssignPopover";
+import { AREA_STAFF } from "./areaStaffData";
 import { SHIFTS, SHIFT_LABELS } from "./shiftConstants";
-import type { AssignedCell, StaffingCell, Employee, Shift } from "../../services/types";
+import type { AssignedCell, StaffingCell, Employee, AreaEmployee, Shift } from "../../services/types";
 
 function rushForShift(staffingCells: StaffingCell[], shift: Shift) {
   const sample = staffingCells.find((c) => c.shift === shift && c.rush_hour?.is_rush);
@@ -35,6 +36,16 @@ export default function DeploymentGrid({ cells, staffingCells, crew, readOnly }:
   const cellMap = new Map(cells.map((c) => [`${c.station_id}-${c.shift}`, c]));
   const staffMap = new Map(staffingCells.map((c) => [`${c.station_id}-${c.shift}`, c]));
 
+  const [popover, setPopover] = useState<{
+    anchorEl: HTMLElement;
+    stationId: string;
+    shift: Shift;
+  } | null>(null);
+
+  const areaEmpMap = new Map<string, AreaEmployee>(
+    AREA_STAFF.map((e) => [e.employee_id, e])
+  );
+
   const getAvailable = (_stationId: string, shift: Shift): Employee[] => {
     const assigned = new Set(cells.flatMap((c) => c.shift === shift ? c.assigned_employee_ids : []));
     return crew.filter(
@@ -42,11 +53,25 @@ export default function DeploymentGrid({ cells, staffingCells, crew, readOnly }:
     );
   };
 
+  const getAvailableArea = (shift: Shift): AreaEmployee[] => {
+    const assigned = new Set(
+      cells.flatMap((c) => (c.shift === shift ? c.assigned_employee_ids : []))
+    );
+    return AREA_STAFF.filter(
+      (e) => !assigned.has(e.employee_id) && e.available_shifts.includes(shift)
+    );
+  };
+
   return (
-    <Card>
-      <CardContent>
-        <TableContainer sx={{ borderRadius: "16px", overflow: "hidden" }}>
-          <Table size="small" sx={{ minWidth: 500 }}>
+    <TableContainer
+      sx={(t) => ({
+        borderRadius: "16px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: t.palette.mode === "dark" ? "rgba(255,255,255,0.02)" : "#fff",
+      })}
+    >
+      <Table size="small" sx={{ minWidth: 500 }}>
             <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 600, fontSize: 11, color: "text.secondary", minWidth: 120 }}>Station</TableCell>
@@ -112,15 +137,7 @@ export default function DeploymentGrid({ cells, staffingCells, crew, readOnly }:
                       return (
                         <TableCell
                           key={sh}
-                          sx={(t) => ({
-                            verticalAlign: "top",
-                            ...(isRush && {
-                              background: t.palette.mode === "dark"
-                                ? "rgba(255,149,0,0.04)"
-                                : "linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%)",
-                              borderLeft: `3px solid ${t.palette.mode === "dark" ? "#FFB340" : "#FB923C"}`,
-                            }),
-                          })}
+                          sx={{ verticalAlign: "top" }}
                         >
                           <Box
                             sx={(t) => {
@@ -128,9 +145,9 @@ export default function DeploymentGrid({ cells, staffingCells, crew, readOnly }:
                               return {
                                 display: "flex",
                                 alignItems: "center",
-                                gap: 0.75,
-                                p: "6px 10px",
-                                borderRadius: "10px",
+                                gap: 0.5,
+                                p: "4px 8px",
+                                borderRadius: "8px",
                                 bgcolor: isRush
                                   ? (isDark ? "rgba(255,149,0,0.1)" : "#FFF7ED")
                                   : (isDark ? "rgba(62,145,255,0.1)" : "#EDF4FF"),
@@ -139,7 +156,6 @@ export default function DeploymentGrid({ cells, staffingCells, crew, readOnly }:
                                     ? (isDark ? "rgba(255,149,0,0.2)" : "#FDBA74")
                                     : (isDark ? "rgba(62,145,255,0.2)" : "#B8D4F8")
                                 }`,
-                                mb: 0.5,
                               };
                             }}
                           >
@@ -147,6 +163,7 @@ export default function DeploymentGrid({ cells, staffingCells, crew, readOnly }:
                               variant="body2"
                               sx={(t) => ({
                                 fontWeight: 700,
+                                fontSize: 13,
                                 minWidth: 14,
                                 color: isRush
                                   ? (t.palette.mode === "dark" ? "#FFB340" : "#C2410C")
@@ -162,90 +179,113 @@ export default function DeploymentGrid({ cells, staffingCells, crew, readOnly }:
                                   ? (t.palette.mode === "dark" ? "#E89440" : "#EA580C")
                                   : "primary.main",
                                 fontWeight: 500,
+                                fontSize: 10,
                               })}
                             >
                               AI rec
                             </Typography>
                             {isRush && scell?.rush_hour && (
                               <Chip
-                                label={`+${scell.rush_hour.staff_uplift} rush`}
+                                label={`+${scell.rush_hour.staff_uplift} staff`}
                                 size="small"
                                 sx={(t) => ({
-                                  height: 18,
-                                  fontSize: 9,
+                                  height: 16,
+                                  fontSize: 8,
                                   fontWeight: 700,
                                   color: t.palette.mode === "dark" ? "#FFB340" : "#C2410C",
                                   bgcolor: t.palette.mode === "dark" ? "rgba(255,149,0,0.12)" : "#FFEDD5",
                                   border: `1px solid ${t.palette.mode === "dark" ? "rgba(255,149,0,0.2)" : "#FDBA74"}`,
                                   ml: "auto",
-                                  borderRadius: "8px",
+                                  borderRadius: "6px",
+                                  "& .MuiChip-label": { px: 0.5 },
                                 })}
                               />
                             )}
+                            {diff === 0 && cell.assigned_employee_ids.length > 0 && (
+                              <Tooltip title="Staffing met" arrow>
+                                <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "success.main", ml: "auto", flexShrink: 0 }} />
+                              </Tooltip>
+                            )}
+                            {diff < 0 && (
+                              <Tooltip title={`${Math.abs(diff)} short`} arrow>
+                                <Typography sx={{ ml: "auto", fontSize: 9, fontWeight: 700, color: "warning.main", flexShrink: 0 }}>
+                                  {Math.abs(diff)} short
+                                </Typography>
+                              </Tooltip>
+                            )}
+                            {diff > 0 && (
+                              <Tooltip title={`${diff} over`} arrow>
+                                <Typography sx={{ ml: "auto", fontSize: 9, fontWeight: 700, color: "warning.main", flexShrink: 0 }}>
+                                  +{diff}
+                                </Typography>
+                              </Tooltip>
+                            )}
                           </Box>
-                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.75 }}>
+                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
                             {cell.assigned_employee_ids.map((eid) => {
                               const emp = empMap.get(eid);
-                              return (
+                              const areaEmp = areaEmpMap.get(eid);
+                              const isArea = !!areaEmp;
+                              const displayName = emp
+                                ? emp.employee_name.split(" ").map((w: string) => w[0]).join("")
+                                : areaEmp
+                                  ? areaEmp.employee_name.split(" ").map((w: string) => w[0]).join("")
+                                  : eid.slice(0, 4);
+
+                              const chip = (
                                 <Chip
                                   key={eid}
-                                  label={emp ? emp.employee_name.split(" ").map((w: string) => w[0]).join("") : eid.slice(0, 4)}
+                                  label={displayName}
                                   size="small"
                                   {...(!readOnly && {
                                     onDelete: () => dispatch(unassignEmployee({ stationId: sid, shift: sh, employeeId: eid })),
                                   })}
-                                  sx={{ fontSize: 10, fontWeight: 600, height: 24 }}
+                                  sx={(t) => ({
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    height: 22,
+                                    ...(isArea && {
+                                      bgcolor: t.palette.mode === "dark" ? "rgba(255,149,0,0.15)" : "#FFF7ED",
+                                      color: t.palette.mode === "dark" ? "#FFB340" : "#EA580C",
+                                      border: `1px dashed ${t.palette.mode === "dark" ? "rgba(255,149,0,0.3)" : "#FDBA74"}`,
+                                      "& .MuiChip-deleteIcon": {
+                                        color: t.palette.mode === "dark" ? "#FFB340" : "#EA580C",
+                                        "&:hover": {
+                                          color: t.palette.mode === "dark" ? "#FF9500" : "#C2410C",
+                                        },
+                                      },
+                                    }),
+                                  })}
                                 />
                               );
+
+                              return isArea ? (
+                                <Tooltip key={eid} title={`Borrowed from ${areaEmp!.store_name}`} arrow>
+                                  {chip}
+                                </Tooltip>
+                              ) : chip;
                             })}
-                            {!readOnly && available.length > 0 && (
+                            {!readOnly && (available.length > 0 || getAvailableArea(sh).length > 0) && (
                               <Button
                                 size="small"
                                 variant="outlined"
                                 sx={{
                                   minWidth: 0,
                                   px: 1,
-                                  py: 0.25,
+                                  py: 0.125,
                                   fontSize: 10,
                                   borderStyle: "dashed",
-                                  borderRadius: "10px",
+                                  borderRadius: "8px",
+                                  lineHeight: 1.2,
                                 }}
-                                onClick={() => {
-                                  const next = available[0];
-                                  if (next) dispatch(assignEmployee({ stationId: sid, shift: sh, employeeId: next.employee_id }));
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                  setPopover({ anchorEl: e.currentTarget, stationId: sid, shift: sh });
                                 }}
                               >
                                 + assign
                               </Button>
                             )}
                           </Box>
-                          {diff < 0 && (
-                            <Chip
-                              label={`⚠ ${Math.abs(diff)} short`}
-                              size="small"
-                              color="warning"
-                              variant="outlined"
-                              sx={{ mt: 0.5, fontSize: 10, height: 22 }}
-                            />
-                          )}
-                          {diff === 0 && cell.assigned_employee_ids.length > 0 && (
-                            <Chip
-                              label={"✓ met"}
-                              size="small"
-                              color="success"
-                              variant="outlined"
-                              sx={{ mt: 0.5, fontSize: 10, height: 22 }}
-                            />
-                          )}
-                          {diff > 0 && (
-                            <Chip
-                              label={`+${diff} over`}
-                              size="small"
-                              color="warning"
-                              variant="outlined"
-                              sx={{ mt: 0.5, fontSize: 10, height: 22 }}
-                            />
-                          )}
                         </TableCell>
                       );
                     })}
@@ -254,8 +294,25 @@ export default function DeploymentGrid({ cells, staffingCells, crew, readOnly }:
               })}
             </TableBody>
           </Table>
-        </TableContainer>
-      </CardContent>
-    </Card>
+      <AssignPopover
+        anchorEl={popover?.anchorEl ?? null}
+        open={!!popover}
+        onClose={() => setPopover(null)}
+        stationId={popover?.stationId ?? ""}
+        shift={popover?.shift ?? "Morning"}
+        myStaff={popover ? getAvailable(popover.stationId, popover.shift) : []}
+        areaStaff={popover ? getAvailableArea(popover.shift) : []}
+        onAssign={(employeeId) => {
+          if (popover) {
+            dispatch(assignEmployee({
+              stationId: popover.stationId,
+              shift: popover.shift,
+              employeeId,
+            }));
+          }
+          setPopover(null);
+        }}
+      />
+    </TableContainer>
   );
 }

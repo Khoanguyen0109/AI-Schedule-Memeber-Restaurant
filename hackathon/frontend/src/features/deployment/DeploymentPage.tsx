@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import IconButton from "@mui/material/IconButton";
@@ -89,20 +88,20 @@ export default function DeploymentPage() {
   const gaps = totalRec - totalAssigned;
 
   return (
-    <Box sx={{ display: "flex", gap: 0, height: "calc(100vh - 80px)" }}>
+    <Box sx={{ display: "flex", gap: 0, alignItems: "flex-start" }}>
       {/* ─── Main area ─── */}
-      <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {/* Header bar */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexShrink: 0 }}>
-          <Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {/* Header row */}
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
               Deployment chart
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+            <Typography variant="body2" color="text.secondary">
               {staffing.day_of_week} {staffing.date}
             </Typography>
           </Box>
-          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
             <StatPill label="Assigned" value={`${totalAssigned}/${totalRec}`} color="primary.main" />
             <StatPill label="Crew" value={uniqueCrew} color="text.primary" />
             {gaps > 0 && <StatPill label="Gaps" value={gaps} color="warning.main" />}
@@ -125,21 +124,16 @@ export default function DeploymentPage() {
           </Box>
         </Box>
 
-        {/* Context factors — compact inline strip */}
-        <Box sx={{ display: "flex", gap: 1.5, mb: 2, flexShrink: 0, overflowX: "auto", pb: 0.5 }}>
+        {/* Context factors — compact pills */}
+        <Box sx={{ display: "flex", gap: 0.75, mb: 1.5, flexWrap: "wrap" }}>
           {staffing.context.factors.map((f, i) => (
-            <FactorBadge key={i} factor={f} />
+            <FactorBadge key={i} factor={f} compact />
           ))}
         </Box>
 
-        {/* Deployment grid — scrollable */}
-        <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", pb: 2 }}>
+        {/* Deployment grid */}
+        <Box sx={{ pb: 2 }}>
           <DeploymentGrid cells={cells} staffingCells={staffing.cells} crew={crew ?? []} />
-          <Box sx={{ mt: 1.5, display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
-            <LegendItem label="AI recommendation" />
-            <Chip label="✓ met" size="small" color="success" variant="outlined" sx={{ fontSize: 10 }} />
-            <Chip label="⚠ short" size="small" color="warning" variant="outlined" sx={{ fontSize: 10 }} />
-          </Box>
         </Box>
       </Box>
 
@@ -151,12 +145,15 @@ export default function DeploymentPage() {
           overflow: "hidden",
           transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           display: { xs: "none", md: "block" },
+          position: "sticky",
+          top: 80,
+          alignSelf: "flex-start",
         }}
       >
         <Box
           sx={{
             width: SIDEBAR_WIDTH,
-            height: "100%",
+            height: "calc(100vh - 80px)",
             display: "flex",
             flexDirection: "column",
             gap: 2,
@@ -164,7 +161,7 @@ export default function DeploymentPage() {
           }}
         >
           {/* Sidebar header with collapse */}
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <Typography variant="body2" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 0.75 }}>
               <Box component="span" sx={{ color: "primary.main" }}>◆</Box> AI + Crew
             </Typography>
@@ -175,13 +172,13 @@ export default function DeploymentPage() {
             </Tooltip>
           </Box>
 
-          {/* Crew pool — compact */}
-          <Box sx={{ flexShrink: 0, maxHeight: "35%", overflow: "auto" }}>
+          {/* Crew pool */}
+          <Box sx={{ flexShrink: 0 }}>
             <CrewPool crew={crew ?? []} cells={cells} />
           </Box>
 
           {/* AI Chat — fills remaining space */}
-          <Box sx={{ flex: 1, minHeight: 0 }}>
+          <Box sx={{ flex: 1, minHeight: 300, overflow: "hidden" }}>
             <ChatPanel fill />
           </Box>
         </Box>
@@ -219,19 +216,3 @@ function StatPill({ label, value, color }: { label: string; value: string | numb
   );
 }
 
-function LegendItem({ label }: { label: string }) {
-  return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, fontSize: 12, color: "text.secondary" }}>
-      <Box
-        sx={(t) => ({
-          width: 24,
-          height: 16,
-          borderRadius: "6px",
-          bgcolor: t.palette.mode === "dark" ? "rgba(62,145,255,0.1)" : "#EDF4FF",
-          border: `1px solid ${t.palette.mode === "dark" ? "rgba(62,145,255,0.2)" : "#B8D4F8"}`,
-        })}
-      />
-      {label}
-    </Box>
-  );
-}

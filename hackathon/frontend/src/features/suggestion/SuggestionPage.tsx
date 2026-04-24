@@ -81,6 +81,8 @@ export default function SuggestionPage() {
 
       <DateContextBar />
 
+      {staffing && <AiSummaryBanner staffing={staffing} />}
+
       {!staffing && !generating && (
         <Box>
           <Alert
@@ -189,7 +191,6 @@ export default function SuggestionPage() {
           <Box sx={{ display: "flex", gap: 0 }}>
             <Box sx={{ flex: 1, minWidth: 0, transition: "all 0.3s" }}>
               <StaffingGrid cells={staffing.cells} />
-              <AiSummaryBanner staffing={staffing} />
             </Box>
             {chatOpen && (
               <Box sx={{ width: 360, flexShrink: 0, ml: 2, transition: "all 0.3s" }}>

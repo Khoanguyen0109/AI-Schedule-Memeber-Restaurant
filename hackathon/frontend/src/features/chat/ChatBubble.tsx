@@ -14,6 +14,17 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { assignEmployee, unassignEmployee } from "../deployment/deploymentSlice";
 import { markActionApplied } from "./chatSlice";
 
+function findCell<T extends { station_id: string; shift: string }>(cells: T[], stationId: string, shift: string): T | undefined {
+  return (
+    cells.find((c) => c.station_id === stationId && c.shift === shift) ??
+    cells.find(
+      (c) =>
+        c.station_id.toLowerCase() === stationId.toLowerCase() &&
+        c.shift.toLowerCase() === shift.toLowerCase()
+    )
+  );
+}
+
 function ActionCard({
   action,
   messageId,
@@ -28,52 +39,68 @@ function ActionCard({
   const [status, setStatus] = useState<"pending" | "applied" | "skipped">(
     action.applied ? "applied" : "pending"
   );
-  const [toast, setToast] = useState(false);
+  const [toast, setToast] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "warning" | "info";
+  }>({ open: false, message: "", severity: "success" });
 
   const employeeLabel = action.employee_name || action.employee_id;
   const stationLabel = action.station_name || action.station_id;
 
   const handleApply = () => {
-    if (action.type === "assign") {
-      dispatch(
-        assignEmployee({
-          stationId: action.station_id,
-          shift: action.shift,
-          employeeId: action.employee_id,
-        })
-      );
-    } else if (action.type === "unassign") {
-      dispatch(
-        unassignEmployee({
-          stationId: action.station_id,
-          shift: action.shift,
-          employeeId: action.employee_id,
-        })
-      );
-    } else if (action.type === "swap") {
-      const cell = cells.find(
-        (c) => c.station_id === action.station_id && c.shift === action.shift
-      );
-      if (cell && cell.assigned_employee_ids.length >= cell.ai_recommended && cell.assigned_employee_ids.length > 0) {
-        dispatch(
-          unassignEmployee({
-            stationId: action.station_id,
-            shift: action.shift,
-            employeeId: cell.assigned_employee_ids[0],
-          })
-        );
-      }
-      dispatch(
-        assignEmployee({
-          stationId: action.station_id,
-          shift: action.shift,
-          employeeId: action.employee_id,
-        })
-      );
+    if (cells.length === 0) {
+      setToast({ open: true, message: "Deployment chart is not initialized yet", severity: "warning" });
+      return;
     }
+
+    const cell = findCell(cells, action.station_id, action.shift);
+    if (!cell) {
+      setToast({
+        open: true,
+        message: `Station "${stationLabel}" (${action.shift}) not found in the deployment chart`,
+        severity: "warning",
+      });
+      return;
+    }
+
+    const stationId = cell.station_id;
+    const shift = cell.shift;
+
+    if (action.type === "assign") {
+      if (cell.assigned_employee_ids.includes(action.employee_id)) {
+        dispatch(markActionApplied({ messageId, actionIndex }));
+        setStatus("applied");
+        setToast({ open: true, message: `${employeeLabel} is already assigned to ${stationLabel}`, severity: "info" });
+        return;
+      }
+      dispatch(assignEmployee({ stationId, shift, employeeId: action.employee_id }));
+    } else if (action.type === "unassign") {
+      if (!cell.assigned_employee_ids.includes(action.employee_id)) {
+        setToast({
+          open: true,
+          message: `${employeeLabel} is not currently assigned to ${stationLabel}`,
+          severity: "warning",
+        });
+        return;
+      }
+      dispatch(unassignEmployee({ stationId, shift, employeeId: action.employee_id }));
+    } else if (action.type === "swap") {
+      if (cell.assigned_employee_ids.length >= cell.ai_recommended && cell.assigned_employee_ids.length > 0) {
+        dispatch(unassignEmployee({ stationId, shift, employeeId: cell.assigned_employee_ids[0] }));
+      }
+      dispatch(assignEmployee({ stationId, shift, employeeId: action.employee_id }));
+    }
+
     dispatch(markActionApplied({ messageId, actionIndex }));
     setStatus("applied");
-    setToast(true);
+    const msg =
+      action.type === "unassign"
+        ? `Unassigned ${employeeLabel} from ${stationLabel}`
+        : action.type === "swap"
+          ? `Swapped ${employeeLabel} into ${stationLabel}`
+          : `Assigned ${employeeLabel} to ${stationLabel}`;
+    setToast({ open: true, message: msg, severity: "success" });
   };
 
   const handleSkip = () => {
@@ -91,13 +118,6 @@ function ActionCard({
 
   const typeLabel = action.type === "swap" ? "swap" : action.type;
   const typeColor: "primary" | "warning" | "info" = action.type === "unassign" ? "warning" : action.type === "swap" ? "info" : "primary";
-
-  const toastMessage =
-    action.type === "unassign"
-      ? `Unassigned ${employeeLabel} from ${stationLabel}`
-      : action.type === "swap"
-        ? `Swapped ${employeeLabel} into ${stationLabel}`
-        : `Assigned ${employeeLabel} to ${stationLabel}`;
 
   if (status === "skipped") {
     return (
@@ -180,9 +200,9 @@ function ActionCard({
           )}
         </Box>
       </Box>
-      <Snackbar open={toast} autoHideDuration={2500} onClose={() => setToast(false)}>
-        <Alert severity="success" variant="filled" sx={{ borderRadius: "20px", fontSize: 12 }}>
-          {toastMessage}
+      <Snackbar open={toast.open} autoHideDuration={2500} onClose={() => setToast((p) => ({ ...p, open: false }))}>
+        <Alert severity={toast.severity} variant="filled" sx={{ borderRadius: "20px", fontSize: 12 }}>
+          {toast.message}
         </Alert>
       </Snackbar>
     </>

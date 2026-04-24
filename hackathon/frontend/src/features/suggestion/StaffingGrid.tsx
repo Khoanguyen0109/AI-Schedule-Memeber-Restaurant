@@ -55,52 +55,6 @@ function RushHeaderBadge({ cells, shift }: { cells: StaffingCell[]; shift: Shift
   );
 }
 
-function RushSolutionTips({ cell }: { cell: StaffingCell }) {
-  const [open, setOpen] = useState(false);
-  const rush = cell.rush_hour;
-  if (!rush?.is_rush || !rush.solutions?.length) return null;
-
-  return (
-    <Box sx={{ mt: 0.5 }}>
-      <Typography
-        variant="caption"
-        onClick={(e) => { e.stopPropagation(); setOpen((p) => !p); }}
-        sx={(t) => ({
-          cursor: "pointer",
-          color: t.palette.mode === "dark" ? "#FFB340" : "#C2410C",
-          fontWeight: 600,
-          fontSize: 9,
-          display: "flex",
-          alignItems: "center",
-          gap: 0.25,
-          "&:hover": { textDecoration: "underline" },
-        })}
-      >
-        💡 {open ? "Hide" : "View"} rush-hour solutions
-      </Typography>
-      <Collapse in={open}>
-        <Box
-          sx={(t) => ({
-            mt: 0.5,
-            p: 1.25,
-            borderRadius: "12px",
-            bgcolor: t.palette.mode === "dark" ? "rgba(255,149,0,0.06)" : "#FFFBEB",
-            border: `1px solid ${t.palette.mode === "dark" ? "rgba(255,214,10,0.15)" : "#FDE68A"}`,
-            fontSize: 10,
-            lineHeight: 1.5,
-          })}
-        >
-          {rush.solutions.map((tip, i) => (
-            <Box key={i} sx={{ display: "flex", gap: 0.5, mb: i < rush.solutions.length - 1 ? 0.5 : 0 }}>
-              <Box component="span" sx={{ color: "warning.main", fontWeight: 700, flexShrink: 0 }}>{i + 1}.</Box>
-              <Typography variant="caption" sx={{ fontSize: 10 }}>{tip}</Typography>
-            </Box>
-          ))}
-        </Box>
-      </Collapse>
-    </Box>
-  );
-}
 
 interface StaffingGridProps {
   cells: StaffingCell[];
@@ -108,11 +62,13 @@ interface StaffingGridProps {
 
 export default function StaffingGrid({ cells }: StaffingGridProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [rushOpenKey, setRushOpenKey] = useState<string | null>(null);
 
   const stationIds = [...new Set(cells.map((c) => c.station_id))];
   const lookup = new Map(cells.map((c) => [`${c.station_id}-${c.shift}`, c]));
 
   const toggle = (key: string) => setExpandedKey((prev) => (prev === key ? null : key));
+  const toggleRush = (key: string) => setRushOpenKey((prev) => (prev === key ? null : key));
 
   return (
     <Card>
@@ -168,15 +124,7 @@ export default function StaffingGrid({ cells }: StaffingGridProps) {
                       return (
                         <TableCell
                           key={sh}
-                          sx={(t) => ({
-                            verticalAlign: "top",
-                            ...(isRush && {
-                              background: t.palette.mode === "dark"
-                                ? "rgba(255,149,0,0.04)"
-                                : "linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%)",
-                              borderLeft: `3px solid ${t.palette.mode === "dark" ? "#FFB340" : "#FB923C"}`,
-                            }),
-                          })}
+                          sx={{ verticalAlign: "top" }}
                         >
                           <Box
                             onClick={() => toggle(key)}
@@ -185,9 +133,7 @@ export default function StaffingGrid({ cells }: StaffingGridProps) {
                               borderRadius: "12px",
                               p: 0.75,
                               position: "relative",
-                              "&:hover": {
-                                bgcolor: isRush ? "rgba(251,146,60,0.06)" : "primary.light",
-                              },
+                              "&:hover": { bgcolor: "primary.light" },
                               transition: "background 0.15s",
                             }}
                           >
@@ -234,23 +180,65 @@ export default function StaffingGrid({ cells }: StaffingGridProps) {
                               >
                                 staff
                               </Typography>
-                              {isRush && cell.rush_hour && (
-                                <Chip
-                                  label={`+${cell.rush_hour.staff_uplift} rush`}
-                                  size="small"
-                                  sx={(t) => ({
-                                    height: 18,
-                                    fontSize: 9,
-                                    fontWeight: 700,
-                                    color: t.palette.mode === "dark" ? "#FFB340" : "#C2410C",
-                                    bgcolor: t.palette.mode === "dark" ? "rgba(255,149,0,0.12)" : "#FFEDD5",
-                                    border: `1px solid ${t.palette.mode === "dark" ? "rgba(255,149,0,0.2)" : "#FDBA74"}`,
-                                    ml: "auto",
-                                    borderRadius: "8px",
-                                  })}
-                                />
-                              )}
                             </Box>
+                            {isRush && cell.rush_hour && (
+                              <>
+                                <Typography
+                                  variant="caption"
+                                  onClick={(e) => { e.stopPropagation(); toggleRush(key); }}
+                                  sx={(t) => ({
+                                    cursor: "pointer",
+                                    color: t.palette.mode === "dark" ? "#FFB340" : "#C2410C",
+                                    fontWeight: 600,
+                                    fontSize: 9,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.25,
+                                    mt: 0.25,
+                                    "&:hover": { textDecoration: "underline" },
+                                  })}
+                                >
+                                  💡 {rushOpenKey === key ? "Hide" : "View"} rush solutions
+                                </Typography>
+                                <Collapse in={rushOpenKey === key}>
+                                  <Box sx={{ mt: 0.5 }}>
+                                    <Chip
+                                      label={`+${cell.rush_hour.staff_uplift} staff — ${cell.rush_hour.label} (${cell.rush_hour.window})`}
+                                      size="small"
+                                      sx={(t) => ({
+                                        height: 20,
+                                        fontSize: 9,
+                                        fontWeight: 700,
+                                        color: t.palette.mode === "dark" ? "#FFB340" : "#C2410C",
+                                        bgcolor: t.palette.mode === "dark" ? "rgba(255,149,0,0.12)" : "#FFEDD5",
+                                        border: `1px solid ${t.palette.mode === "dark" ? "rgba(255,149,0,0.2)" : "#FDBA74"}`,
+                                        borderRadius: "10px",
+                                        mb: 0.5,
+                                      })}
+                                    />
+                                    {cell.rush_hour.solutions?.length > 0 && (
+                                      <Box
+                                        sx={(t) => ({
+                                          p: 1.25,
+                                          borderRadius: "12px",
+                                          bgcolor: t.palette.mode === "dark" ? "rgba(255,149,0,0.06)" : "#FFFBEB",
+                                          border: `1px solid ${t.palette.mode === "dark" ? "rgba(255,214,10,0.15)" : "#FDE68A"}`,
+                                          fontSize: 10,
+                                          lineHeight: 1.5,
+                                        })}
+                                      >
+                                        {cell.rush_hour.solutions.map((tip: string, i: number) => (
+                                          <Box key={i} sx={{ display: "flex", gap: 0.5, mb: i < (cell.rush_hour!.solutions.length - 1) ? 0.5 : 0 }}>
+                                            <Box component="span" sx={{ color: "warning.main", fontWeight: 700, flexShrink: 0 }}>{i + 1}.</Box>
+                                            <Typography variant="caption" sx={{ fontSize: 10 }}>{tip}</Typography>
+                                          </Box>
+                                        ))}
+                                      </Box>
+                                    )}
+                                  </Box>
+                                </Collapse>
+                              </>
+                            )}
                             <Typography variant="caption" color="text.disabled" sx={{ fontStyle: "italic", lineHeight: 1.4 }}>
                               {cell.reason_short}
                             </Typography>
@@ -282,7 +270,6 @@ export default function StaffingGrid({ cells }: StaffingGridProps) {
                                 </Box>
                               }
                             />
-                            <RushSolutionTips cell={cell} />
                             <ReasoningPanel open={expandedKey === key} rows={cell.reason_rows} />
                           </Box>
                         </TableCell>

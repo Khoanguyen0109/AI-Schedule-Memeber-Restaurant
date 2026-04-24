@@ -11,6 +11,17 @@ const initialState: DeploymentState = {
   savedDeploymentId: null,
 };
 
+function findCell(cells: AssignedCell[], stationId: string, shift: string) {
+  return (
+    cells.find((c) => c.station_id === stationId && c.shift === shift) ??
+    cells.find(
+      (c) =>
+        c.station_id.toLowerCase() === stationId.toLowerCase() &&
+        c.shift.toLowerCase() === shift.toLowerCase()
+    )
+  );
+}
+
 const deploymentSlice = createSlice({
   name: "deployment",
   initialState,
@@ -24,9 +35,7 @@ const deploymentSlice = createSlice({
       action: PayloadAction<{ stationId: string; shift: string; employeeId: string }>
     ) {
       const { stationId, shift, employeeId } = action.payload;
-      const cell = state.cells.find(
-        (c) => c.station_id === stationId && c.shift === shift
-      );
+      const cell = findCell(state.cells, stationId, shift);
       if (cell && !cell.assigned_employee_ids.includes(employeeId)) {
         cell.assigned_employee_ids.push(employeeId);
       }
@@ -36,9 +45,7 @@ const deploymentSlice = createSlice({
       action: PayloadAction<{ stationId: string; shift: string; employeeId: string }>
     ) {
       const { stationId, shift, employeeId } = action.payload;
-      const cell = state.cells.find(
-        (c) => c.station_id === stationId && c.shift === shift
-      );
+      const cell = findCell(state.cells, stationId, shift);
       if (cell) {
         cell.assigned_employee_ids = cell.assigned_employee_ids.filter(
           (id) => id !== employeeId

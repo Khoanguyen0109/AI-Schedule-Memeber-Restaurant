@@ -78,6 +78,16 @@ export interface EmployeePatch {
   skills?: string[];
 }
 
+export interface AreaEmployee {
+  employee_id: string;
+  employee_name: string;
+  store_id: string;
+  store_name: string;
+  role: string;
+  available_shifts: Shift[];
+  skills: string[];
+}
+
 // Screen 2 — AI context + suggestion
 
 export interface ContextFactor {

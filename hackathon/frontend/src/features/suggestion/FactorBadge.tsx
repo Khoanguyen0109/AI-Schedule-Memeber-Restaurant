@@ -1,5 +1,6 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import Tooltip from "@mui/material/Tooltip";
 import type { ContextFactor } from "../../services/types";
 
 const KIND_STYLES: Record<string, { bg: string; bgDark: string; border: string; borderDark: string; accent: string; accentDark: string }> = {
@@ -10,10 +11,12 @@ const KIND_STYLES: Record<string, { bg: string; bgDark: string; border: string; 
   day_of_week: { bg: "#F0F9E8", bgDark: "#0E1C07", border: "#BEE0A0", borderDark: "#1C3A0F", accent: "#34C759", accentDark: "#30D158" },
 };
 
-function fmtDelta(v: number) {
-  if (v > 0) return `+${(v * 100).toFixed(0)}%`;
-  if (v < 0) return `${(v * 100).toFixed(0)}%`;
-  return "0%";
+function fmtDelta(v: number, withUnit = false) {
+  const pct =
+    v > 0 ? `+${(v * 100).toFixed(0)}%` :
+    v < 0 ? `${(v * 100).toFixed(0)}%` :
+    "0%";
+  return withUnit && v !== 0 ? `${pct} traffic` : pct;
 }
 
 function deltaColor(v: number, mode: "light" | "dark") {
@@ -22,8 +25,68 @@ function deltaColor(v: number, mode: "light" | "dark") {
   return "#8E8E93";
 }
 
-export default function FactorBadge({ factor }: { factor: ContextFactor }) {
+function probabilityLabel(f: ContextFactor): string {
+  const pct = `${(f.probability! * 100).toFixed(0)}%`;
+  if (f.kind === "weather") return `${pct} chance`;
+  return pct;
+}
+
+function buildTooltip(f: ContextFactor): string {
+  const parts: string[] = [];
+  if (f.probability != null) parts.push(probabilityLabel(f));
+  if (f.source) parts.push(`Source: ${f.source}`);
+  parts.push(`Delivery ${fmtDelta(f.impact_delivery, true)}, Dine-in ${fmtDelta(f.impact_dinein, true)}`);
+  if (f.impact_drivethrough !== 0) parts.push(`Drive-through ${fmtDelta(f.impact_drivethrough, true)}`);
+  return parts.join(" · ");
+}
+
+function compactLabel(f: ContextFactor): string {
+  if (f.probability != null) return `${f.label} ${probabilityLabel(f)}`;
+  const maxImpact = Math.max(
+    Math.abs(f.impact_delivery),
+    Math.abs(f.impact_dinein),
+    Math.abs(f.impact_drivethrough),
+  );
+  if (maxImpact > 0) return `${f.label} ${fmtDelta(maxImpact, true)}`;
+  return f.label;
+}
+
+export default function FactorBadge({ factor, compact }: { factor: ContextFactor; compact?: boolean }) {
   const style = KIND_STYLES[factor.kind] ?? KIND_STYLES.event;
+
+  if (compact) {
+    return (
+      <Tooltip title={buildTooltip(factor)} arrow>
+        <Box
+          sx={(t) => {
+            const isDark = t.palette.mode === "dark";
+            return {
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: 1.25,
+              py: 0.5,
+              borderRadius: "10px",
+              border: `1px solid ${isDark ? style.borderDark : style.border}`,
+              bgcolor: isDark ? style.bgDark : style.bg,
+              whiteSpace: "nowrap",
+              cursor: "default",
+            };
+          }}
+        >
+          <Typography
+            sx={(t) => ({
+              fontSize: 11,
+              fontWeight: 600,
+              color: t.palette.mode === "dark" ? style.accentDark : style.accent,
+            })}
+          >
+            {compactLabel(factor)}
+          </Typography>
+        </Box>
+      </Tooltip>
+    );
+  }
 
   return (
     <Box
@@ -66,25 +129,15 @@ export default function FactorBadge({ factor }: { factor: ContextFactor }) {
       </Typography>
 
       {factor.probability != null && (
-        <Row label="Probability" value={`${(factor.probability * 100).toFixed(0)}%`} bold />
+        <Row label={factor.kind === "weather" ? "Chance" : "Probability"} value={probabilityLabel(factor)} bold />
       )}
       {factor.time_window && <Row label="Time" value={factor.time_window} />}
-      <Row label="Delivery" value={fmtDelta(factor.impact_delivery)} delta={factor.impact_delivery} />
-      <Row label="Dine-in" value={fmtDelta(factor.impact_dinein)} delta={factor.impact_dinein} />
+      <Row label="Delivery" value={fmtDelta(factor.impact_delivery, true)} delta={factor.impact_delivery} />
+      <Row label="Dine-in" value={fmtDelta(factor.impact_dinein, true)} delta={factor.impact_dinein} />
       {factor.impact_drivethrough !== 0 && (
-        <Row label="Drive-through" value={fmtDelta(factor.impact_drivethrough)} delta={factor.impact_drivethrough} />
+        <Row label="Drive-through" value={fmtDelta(factor.impact_drivethrough, true)} delta={factor.impact_drivethrough} />
       )}
-      <Row label="Source" value={factor.source.replace(/_/g, " ")} />
-
-      {factor.note && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ mt: 0.5, lineHeight: 1.45, fontStyle: "italic", fontSize: 11 }}
-        >
-          {factor.note}
-        </Typography>
-      )}
+      
     </Box>
   );
 }
