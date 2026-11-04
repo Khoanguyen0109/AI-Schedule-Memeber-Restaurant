@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://bytecoach-api-production.up.railway.app/api/:path*"
+      "destination": "https://api-production-a95c.up.railway.app/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://bytecoach-api-production.up.railway.app/health"
+      "destination": "https://api-production-a95c.up.railway.app/health"
     },
     {
       "source": "/((?!api|health|assets|favicon).*)",
